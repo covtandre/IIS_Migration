@@ -10,4 +10,9 @@ https://github.com/covtandre/IIS_Migration/blob/main/Origin_Script
 
 
 --- The destination script clears any existing IIS configuration, imports the exported XML files, reapplies Anonymous Authentication settings, and restarts IIS to finalize the migration.
-https://github.com/covtandre/IIS_Migration/blob/main/Origin_Script
+https://github.com/covtandre/IIS_Migration/blob/main/Destination_Script
+
+Full article:
+https://blog.cyber-lit.net/2025/10/05/export-and-import-all-iis-application-pools-and-websites-between-servers/
+
+
