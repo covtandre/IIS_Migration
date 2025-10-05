@@ -1,0 +1,40 @@
+$ErrorActionPreference = 'Stop'
+
+# ====== SETTINGS ======
+$WorkDir    = "C:\1234"
+$AppCmd     = "$env:windir\System32\inetsrv\appcmd.exe"
+$DestServer = "DestinationServer.domain.local"
+$DestShare  = "\\$DestServer\c$\1234"
+$RemoteScript = "C:\1234\Import-And-Apply.ps1"
+# ======================
+
+# Ensure working dir exists
+if (-not (Test-Path $WorkDir)) { New-Item -ItemType Directory -Path $WorkDir -Force | Out-Null }
+
+Write-Host "[IIS1] Exporting AppPools and Sites..."
+cmd.exe /c "`"$AppCmd`" list apppool /config /xml /apphostconfig > `"$WorkDir\AppPools.xml`""
+cmd.exe /c "`"$AppCmd`" list site /config /xml /apphostconfig > `"$WorkDir\Websites.xml`""
+
+Write-Host "[IIS1] Exporting Anonymous Auth mapping..."
+Import-Module WebAdministration
+$results = Get-ChildItem IIS:\Sites | ForEach-Object {
+    $filter  = "system.webServer/security/authentication/anonymousAuthentication"
+    $enabled = (Get-WebConfigurationProperty -Filter $filter -PSPath 'IIS:\' -Location $_.Name -Name enabled).Value
+    $user    = (Get-WebConfigurationProperty -Filter $filter -PSPath 'IIS:\' -Location $_.Name -Name userName).Value
+    [pscustomobject]@{
+        SiteName            = $_.Name
+        UsesAppPoolIdentity = $enabled -and ([string]::IsNullOrEmpty($user))
+    }
+}
+$results | Export-Csv -NoTypeInformation -Path "$WorkDir\IIS_AnonAuth_Sites.csv"
+
+Write-Host "[IIS1] Copying files to $DestServer..."
+if (-not (Test-Path $DestShare)) { New-Item -ItemType Directory -Path $DestShare -Force | Out-Null }
+Copy-Item "$WorkDir\AppPools.xml"            $DestShare -Force
+Copy-Item "$WorkDir\Websites.xml"            $DestShare -Force
+Copy-Item "$WorkDir\IIS_AnonAuth_Sites.csv"  $DestShare -Force
+
+Write-Host "[IIS1] Triggering import on $DestServer..."
+Invoke-Command -ComputerName $DestServer -ScriptBlock { & 'C:\1234\Import-And-Apply.ps1' }
+
+Write-Host "[IIS1] Done."
