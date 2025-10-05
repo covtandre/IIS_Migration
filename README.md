@@ -5,4 +5,5 @@ Having multiple websites running on a IIS server can be problematic to make migr
 To simplify the process on machines in the same domain we have two simple scripts:
 
 --- The origin script automatically exports all IIS Application Pools, Websites, and Anonymous Authentication configurations, copies them to the target server, and remotely triggers the import process.
+
 --- The destination script clears any existing IIS configuration, imports the exported XML files, reapplies Anonymous Authentication settings, and restarts IIS to finalize the migration.
