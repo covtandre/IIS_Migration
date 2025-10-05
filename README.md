@@ -1,4 +1,5 @@
 # IIS_Migration
+<img width="910" height="734" alt="image" src="https://github.com/user-attachments/assets/b37cb0e4-d388-4b6f-8982-4dc757fd2f27" />
 
 Having multiple websites running on a IIS server can be problematic to make migraiton to a new machine, besides copying the data you have to recreate new application pool's and website.
 
