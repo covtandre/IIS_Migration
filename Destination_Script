@@ -1,0 +1,46 @@
+Script de destino
+
+$ErrorActionPreference = 'Stop'
+Import-Module WebAdministration
+
+$WorkDir = "C:\1234"
+$AppCmd  = "$env:windir\System32\inetsrv\appcmd.exe"
+$xmlPools = Join-Path $WorkDir 'AppPools.xml'
+$xmlSites = Join-Path $WorkDir 'Websites.xml'
+$csvAuth  = Join-Path $WorkDir 'IIS_AnonAuth_Sites.csv'
+
+# Validate files
+foreach ($f in @($xmlPools, $xmlSites, $csvAuth)) {
+    if (-not (Test-Path $f)) { throw "Missing required file: $f" }
+}
+
+Write-Host "[IIS2] Deleting all Sites..."
+Get-Item IIS:\Sites\*    -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force
+
+Write-Host "[IIS2] Deleting all AppPools..."
+Get-Item IIS:\AppPools\* -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force
+
+Write-Host "[IIS2] Importing AppPools..."
+cmd.exe /c "`"$AppCmd`" add apppool /in < `"$xmlPools`""
+
+Write-Host "[IIS2] Importing Sites..."
+cmd.exe /c "`"$AppCmd`" add site /in < `"$xmlSites`""
+
+Write-Host "[IIS2] Re-applying Anonymous Auth..."
+$rows = Import-Csv $csvAuth
+$filter = "system.webServer/security/authentication/anonymousAuthentication"
+foreach ($row in $rows) {
+    if ($row.UsesAppPoolIdentity -eq "True") {
+        Set-WebConfigurationProperty -Filter $filter -PSPath 'IIS:\' -Location $row.SiteName -Name enabled  -Value $true
+        Set-WebConfigurationProperty -Filter $filter -PSPath 'IIS:\' -Location $row.SiteName -Name userName -Value ""
+        Set-WebConfigurationProperty -Filter $filter -PSPath 'IIS:\' -Location $row.SiteName -Name password -Value ""
+        Write-Host "  [$($row.SiteName)] -> Anonymous: Application Pool Identity"
+    } else {
+        Write-Host "  [$($row.SiteName)] -> Skipped"
+    }
+}
+
+Write-Host "[IIS2] Restarting IIS..."
+& "$env:windir\System32\iisreset.exe" /restart | Out-Null
+
+Write-Host "[IIS2] Done."
